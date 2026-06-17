@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Query, HTTPException
+from fastapi import APIRouter, Query, Request, HTTPException
 from typing import Optional
 from app import data_loader
 
@@ -37,8 +37,37 @@ def _filter_pipes(
     return items
 
 
+def _build_pagination(request: Request, page: int, per_page: int, total: int):
+    last_page = max(1, (total + per_page - 1) // per_page)
+    base = str(request.base_url).rstrip("/") + str(request.url.path)
+
+    def page_url(p):
+        params = dict(request.query_params)
+        params["page"] = str(p)
+        qs = "&".join(f"{k}={v}" for k, v in params.items())
+        return f"{base}?{qs}"
+
+    links = [{"url": None, "label": "&laquo; Previous", "active": False}]
+    for i in range(1, last_page + 1):
+        links.append({"url": page_url(i), "label": str(i), "active": i == page})
+    links.append({"url": page_url(page + 1) if page < last_page else None, "label": "Next &raquo;", "active": False})
+
+    return {
+        "first_page_url": page_url(1),
+        "last_page_url": page_url(last_page),
+        "next_page_url": page_url(page + 1) if page < last_page else None,
+        "prev_page_url": page_url(page - 1) if page > 1 else None,
+        "path": base,
+        "from": (page - 1) * per_page + 1 if total > 0 else None,
+        "to": min(page * per_page, total) if total > 0 else None,
+        "last_page": last_page,
+        "links": links,
+    }
+
+
 @router.get("")
 def list_pipes(
+    request: Request,
     page: int = Query(1, ge=1),
     per_page: int = Query(15, ge=1, le=500),
     fungsi: Optional[str] = None,
@@ -51,19 +80,18 @@ def list_pipes(
 ):
     items = _filter_pipes(fungsi, pipe_dia, tahun, status, material, wilayah, search)
     total = len(items)
-    last_page = max(1, (total + per_page - 1) // per_page)
     start = (page - 1) * per_page
     page_items = items[start: start + per_page]
 
-    slim = [{k: v for k, v in p.items() if k != "geometry"} for p in page_items]
+    pagination = _build_pagination(request, page, per_page, total)
     return {
         "success": True,
         "data": {
-            "data": slim,
             "current_page": page,
+            "data": page_items,
             "per_page": per_page,
             "total": total,
-            "last_page": last_page,
+            **pagination,
         },
     }
 
@@ -72,18 +100,23 @@ def list_pipes(
 def get_filters():
     items = data_loader.pipes
 
-    def distinct(field):
+    def distinct_ordered(field):
         return sorted({p[field] for p in items if p[field] is not None})
+
+    # Order fungsi by occurrence (most common first), then alpha fallback
+    fungsi_order = ["Lateral", "Induk", "Glontor"]
+    all_fungsi = {p["fungsi"] for p in items if p["fungsi"] is not None}
+    fungsi_sorted = [f for f in fungsi_order if f in all_fungsi] + sorted(all_fungsi - set(fungsi_order))
 
     return {
         "success": True,
         "data": {
-            "fungsi": distinct("fungsi"),
+            "fungsi": fungsi_sorted,
             "pipe_dia": sorted({p["pipe_dia"] for p in items if p["pipe_dia"] is not None}),
             "tahun": sorted({p["tahun"] for p in items if p["tahun"] is not None}),
-            "status": distinct("status"),
-            "material": distinct("material"),
-            "wilayah": distinct("wilayah"),
+            "status": distinct_ordered("status"),
+            "material": distinct_ordered("material"),
+            "wilayah": distinct_ordered("wilayah"),
         },
     }
 

@@ -83,7 +83,7 @@ def _load_manholes():
             "pengendali": props.get("Pengendali"),
             "sektor": sektor,
             "status": _normalize_status(props.get("STATUS")),
-            "wilayah": props.get("WILAYAH"),
+            "wilayah": props.get("WILAYAH") or props.get("KECAMATAN"),
             "aduan_count": 0,
         })
     return result
@@ -109,7 +109,7 @@ def _load_pipes():
         kode_pipa = f"PIPA-{idx:04d}" if not id_jalur else f"{id_jalur}-{idx}"
 
         tahun_raw = props.get("YEAR")
-        tahun = int(tahun_raw) if tahun_raw and tahun_raw != 0.0 else None
+        tahun = int(tahun_raw) if tahun_raw is not None else None
 
         fungsi_raw = props.get("FUNGSI")
         fungsi = fungsi_raw.capitalize() if fungsi_raw else None

@@ -29,18 +29,26 @@ def get_statistics(
 
     total_panjang = sum(p["length_km"] or 0 for p in pipes)
 
+    mh_by_status = count_by(manholes, "status")
+    pipe_by_status = count_by(pipes, "status")
+
+    # Always include all three status keys (match production format)
+    for key in ("baik", "perbaikan", "rusak"):
+        mh_by_status.setdefault(key, 0)
+        pipe_by_status.setdefault(key, 0)
+
     return {
         "success": True,
         "data": {
             "manhole": {
                 "total": len(manholes),
-                "by_status": count_by(manholes, "status"),
+                "by_status": mh_by_status,
                 "by_kondisi": count_by(manholes, "kondisi_mh"),
             },
             "pipa": {
                 "total": len(pipes),
-                "total_panjang_km": round(total_panjang, 4),
-                "by_status": count_by(pipes, "status"),
+                "total_panjang_km": round(total_panjang, 2),
+                "by_status": pipe_by_status,
                 "by_fungsi": count_by(pipes, "fungsi"),
             },
         },

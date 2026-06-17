@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Query
+from fastapi import APIRouter, Query, Request, HTTPException
 from typing import Optional
 from app import data_loader
 
@@ -50,8 +50,37 @@ def _filter_manholes(
     return items
 
 
+def _build_pagination(request: Request, page: int, per_page: int, total: int):
+    last_page = max(1, (total + per_page - 1) // per_page)
+    base = str(request.base_url).rstrip("/") + str(request.url.path)
+
+    def page_url(p):
+        params = dict(request.query_params)
+        params["page"] = str(p)
+        qs = "&".join(f"{k}={v}" for k, v in params.items())
+        return f"{base}?{qs}"
+
+    links = [{"url": None, "label": "&laquo; Previous", "active": False}]
+    for i in range(1, last_page + 1):
+        links.append({"url": page_url(i), "label": str(i), "active": i == page})
+    links.append({"url": page_url(page + 1) if page < last_page else None, "label": "Next &raquo;", "active": False})
+
+    return {
+        "first_page_url": page_url(1),
+        "last_page_url": page_url(last_page),
+        "next_page_url": page_url(page + 1) if page < last_page else None,
+        "prev_page_url": page_url(page - 1) if page > 1 else None,
+        "path": base,
+        "from": (page - 1) * per_page + 1 if total > 0 else None,
+        "to": min(page * per_page, total) if total > 0 else None,
+        "last_page": last_page,
+        "links": links,
+    }
+
+
 @router.get("")
 def list_manholes(
+    request: Request,
     page: int = Query(1, ge=1),
     per_page: int = Query(15, ge=1, le=500),
     desa: Optional[str] = None,
@@ -68,20 +97,18 @@ def list_manholes(
 ):
     items = _filter_manholes(desa, kecamatan, kondisi_mh, risiko, klasifikasi, status, bentuk, material_mh, sektor, wilayah, search)
     total = len(items)
-    last_page = max(1, (total + per_page - 1) // per_page)
     start = (page - 1) * per_page
     page_items = items[start: start + per_page]
 
-    # Exclude heavy geometry from list
-    slim = [{k: v for k, v in m.items() if k != "geometry"} for m in page_items]
+    pagination = _build_pagination(request, page, per_page, total)
     return {
         "success": True,
         "data": {
-            "data": slim,
             "current_page": page,
+            "data": page_items,
             "per_page": per_page,
             "total": total,
-            "last_page": last_page,
+            **pagination,
         },
     }
 
@@ -149,5 +176,4 @@ def get_manhole(manhole_id: int):
     for m in data_loader.manholes:
         if m["id"] == manhole_id:
             return {"success": True, "data": m}
-    from fastapi import HTTPException
     raise HTTPException(status_code=404, detail="Manhole not found")
