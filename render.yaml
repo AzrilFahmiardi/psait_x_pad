@@ -1,0 +1,6 @@
+services:
+  - type: web
+    name: ipal-public-api
+    runtime: docker
+    plan: free
+    healthCheckPath: /
