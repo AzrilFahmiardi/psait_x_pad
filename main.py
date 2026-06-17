@@ -5,6 +5,39 @@ from contextlib import asynccontextmanager
 from app import data_loader
 from app.routers import manholes, pipes, statistics
 
+DESCRIPTION = """
+## IPAL Public API
+
+API publik **read-only** untuk data jaringan IPAL (Instalasi Pengolahan Air Limbah) Kota Yogyakarta.
+
+Data mencakup **5.286 titik manhole** dan **458 segmen jaringan pipa** hasil survei lapangan 2024.
+
+### Fitur
+- 🗺️ **GeoJSON** siap pakai untuk peta (Leaflet, MapLibre, dll)
+- 🔍 **Filter** berdasarkan kecamatan, kondisi, risiko, status, dan lainnya
+- 📄 **Pagination** standar untuk list data
+- 🔓 **Tanpa autentikasi** — semua endpoint terbuka
+
+### Catatan Koordinat
+Koordinat manhole dalam format **WGS84** (lon, lat).
+Koordinat pipa dikonversi otomatis dari **UTM Zone 49S → WGS84**.
+"""
+
+TAGS_METADATA = [
+    {
+        "name": "statistics",
+        "description": "Statistik ringkasan jaringan IPAL — jumlah aset, kondisi, dan status.",
+    },
+    {
+        "name": "manholes",
+        "description": "Data titik **manhole** — list, detail, filter, dan export GeoJSON untuk peta.",
+    },
+    {
+        "name": "pipes",
+        "description": "Data **jaringan pipa** — list, detail, filter, dan export GeoJSON untuk peta.",
+    },
+]
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -14,9 +47,16 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(
     title="IPAL Public API",
-    description="Public read-only API for IPAL manhole and pipe network data",
+    description=DESCRIPTION,
     version="1.0.0",
+    openapi_tags=TAGS_METADATA,
+    contact={
+        "name": "BPAL Kota Yogyakarta",
+        "url": "https://psait-x-pad.onrender.com",
+    },
     lifespan=lifespan,
+    docs_url="/docs",
+    redoc_url="/redoc",
 )
 
 app.add_middleware(
