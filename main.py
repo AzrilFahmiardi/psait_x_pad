@@ -7,20 +7,6 @@ from app.routers import manholes, pipes, statistics
 
 DESCRIPTION = """
 ## IPAL Public API
-
-API publik **read-only** untuk data jaringan IPAL (Instalasi Pengolahan Air Limbah) Kota Yogyakarta.
-
-Data mencakup **5.286 titik manhole** dan **458 segmen jaringan pipa** hasil survei lapangan 2024.
-
-### Fitur
-- 🗺️ **GeoJSON** siap pakai untuk peta (Leaflet, MapLibre, dll)
-- 🔍 **Filter** berdasarkan kecamatan, kondisi, risiko, status, dan lainnya
-- 📄 **Pagination** standar untuk list data
-- 🔓 **Tanpa autentikasi** — semua endpoint terbuka
-
-### Catatan Koordinat
-Koordinat manhole dalam format **WGS84** (lon, lat).
-Koordinat pipa dikonversi otomatis dari **UTM Zone 49S → WGS84**.
 """
 
 TAGS_METADATA = [
